@@ -9,7 +9,7 @@ You can then install the example APK onto an Android device or emulator.
 
 ## Installation
 
-Add the `OktaAppAuth` dependency to your `build.gradle` file:
+Add the `OktaAppAuth` dependency to your `pom.xml` or `build.gradle` file:
 
 ### Maven
 
@@ -18,7 +18,6 @@ Add the `OktaAppAuth` dependency to your `build.gradle` file:
   <groupId>com.okta.android</groupId>
   <artifactId>appauth-android</artifactId>
   <version>0.1.0</version>
-  <type>pom</type>
 </dependency>
 ```
 
@@ -32,7 +31,7 @@ compile 'com.okta.android:appauth-android:0.1.0'
 
 ```xml
 <dependency org='com.okta.android' name='appauth-android' rev='0.1.0'>
-  <artifact name='appauth-android' ext='pom' />
+  <artifact name='appauth-android'/>
 </dependency>
 ```
 
