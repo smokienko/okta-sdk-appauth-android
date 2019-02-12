@@ -61,8 +61,6 @@ public class OktaAuthAccount {
 
     private static final String OIDC_DISCOVERY = ".well-known/openid-configuration";
 
-    private AuthorizationServiceConfiguration mServiceConfig;
-
     private OktaAuthAccount(Builder builder) {
         mClientId = builder.mClientId;
         mRedirectUri = builder.mRedirectUri;
@@ -91,16 +89,8 @@ public class OktaAuthAccount {
         return mScopes;
     }
 
-    boolean isConfigured() {
-        return mServiceConfig != null;
-    }
-
-    AuthorizationServiceConfiguration getServiceConfig() {
-        return mServiceConfig;
-    }
-
     @WorkerThread
-    void obtainConfiguration() throws AuthorizationException {
+    AuthorizationServiceConfiguration obtainConfiguration() throws AuthorizationException {
         AuthorizationException exception = null;
         HttpResponse response = null;
         try {
@@ -111,7 +101,7 @@ public class OktaAuthAccount {
             JSONObject json = response.asJson();
             AuthorizationServiceDiscovery discovery =
                     new AuthorizationServiceDiscovery(json);
-            mServiceConfig = new AuthorizationServiceConfiguration(discovery);
+           return new AuthorizationServiceConfiguration(discovery);
         } catch (IOException ex) {
             exception = AuthorizationException.fromTemplate(
                     AuthorizationException.GeneralErrors.NETWORK_ERROR,
@@ -129,10 +119,10 @@ public class OktaAuthAccount {
                 response.disconnect();
             }
             if (exception != null) {
-                mServiceConfig = null;
                 throw exception;
             }
         }
+        throw new IllegalStateException("Unexpected state");
     }
 
     public static class Builder {

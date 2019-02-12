@@ -82,14 +82,14 @@ public class TestLoginActivity extends AppCompatActivity {
         mTvStatus = findViewById(R.id.status);
 
         mOktaAccount = new OktaAuthAccount.Builder()
-                .clientId("0oaiv94wtjW7DHvvj0h7")
-                .redirectUri("com.okta.appauth.android.example:/callback")
-                .endSessionRedirectUri("com.okta.appauth.android.example:/logout")
+                .clientId("0oahnzhsegzYjqETc0h7")
+                .redirectUri("com.lohika.android.test:/callback")
+                .endSessionRedirectUri("com.lohika.android.test:/logout")
                 .scopes("openid", "profile", "offline_access")
-                .discoveryUri("https://dev-486177.oktapreview.com/oauth2/default")
+                .discoveryUri("https://lohika-um.oktapreview.com/oauth2/default")
                 .create();
 
-        mOktaAccountWithRes = new OktaAuthAccount.Builder().withResId(this, R.raw.okta_app_auth_config).create();
+//        mOktaAccountWithRes = new OktaAuthAccount.Builder().withResId(this, R.raw.okta_app_auth_config).create();
 
         mOktAuth = new OktaAuthManager.Builder(this).withCallback(new AuthorizationCallback() {
             @Override
@@ -135,15 +135,6 @@ public class TestLoginActivity extends AppCompatActivity {
         if (getIntent().getBooleanExtra(EXTRA_FAILED, false)) {
             showSnackbar(getString(R.string.auth_canceled));
         }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, "onActivityResult");
-        super.onActivityResult(requestCode, resultCode, data);
-
-        // Pass result to OktaAuthManager for processing
-        mOktAuth.onActivityResult(requestCode, resultCode, data);
     }
 
     @Override

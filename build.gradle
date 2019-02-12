@@ -35,8 +35,8 @@ ext {
     minSdkVersion = 16
     compileSdkVersion = 28
     buildToolsVersion = "28.0.3"
-    browserVersion = "27.1.1"
-    appcompatVersion = "27.1.1"
+    browserVersion = "28.0.0"
+    appcompatVersion = "28.0.0"
     // SDK dependency versions
     appAuthVersion = "0.7.1"
     okioVersion = "1.13.0"
@@ -75,4 +75,8 @@ task showVersion {
 
 task clean(type: Delete) {
     delete rootProject.buildDir
+}
+
+repositories {
+    google()
 }

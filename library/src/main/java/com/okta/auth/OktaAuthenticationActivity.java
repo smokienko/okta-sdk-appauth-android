@@ -18,7 +18,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.WorkerThread;
 import android.support.customtabs.CustomTabsIntent;
 
 import com.okta.openid.appauth.browser.BrowserDescriptor;
@@ -37,6 +36,7 @@ public class OktaAuthenticationActivity extends Activity {
     private boolean mAuthStarted = false;
     private Uri mAuthUri;
     private int mCustomTabColor;
+    private Intent resultIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +44,6 @@ public class OktaAuthenticationActivity extends Activity {
         //In case redirect activity created a new instance of auth activity.
         if (OktaRedirectActivity.REDIRECT_ACTION.equals(getIntent().getAction())) {
             setResult(RESULT_CANCELED);
-            finish();
             return;
         }
 
@@ -65,7 +64,6 @@ public class OktaAuthenticationActivity extends Activity {
                 mAuthStarted = true;
             } else {
                 setResult(RESULT_CANCELED);
-                finish();
             }
         }
     }
@@ -122,7 +120,7 @@ public class OktaAuthenticationActivity extends Activity {
     }
 
     private void sendResult(int rc, Intent intent) {
-        setResult(rc, intent);
+        resultIntent = intent;
         finish();
     }
 
@@ -130,6 +128,9 @@ public class OktaAuthenticationActivity extends Activity {
     protected void onDestroy() {
         if (mTabManager != null) {
             mTabManager.dispose();
+        }
+        if (resultIntent != null) {
+            LocalIntentBus.getInstance().post(OktaAuthManager.BROWSER_RESULT_CHANNEL, resultIntent);
         }
         super.onDestroy();
     }

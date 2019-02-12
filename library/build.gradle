@@ -60,6 +60,7 @@ dependencies {
     //should be removed when singout functionality is merged
     implementation "com.squareup.okio:okio:${rootProject.okioVersion}"
     implementation "com.android.support:customtabs:${rootProject.browserVersion}"
+    implementation "com.android.support:localbroadcastmanager:${rootProject.browserVersion}"
 
     testImplementation "com.squareup.okhttp3:okhttp-tls:${rootProject.okhttpVersion}"
     testImplementation "io.jsonwebtoken:jjwt-api:${rootProject.jsonWebTokenVersion}"
