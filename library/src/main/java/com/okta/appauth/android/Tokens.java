@@ -27,7 +27,7 @@ public class Tokens {
     private String mAccessToken;
     private String mRefreshToken;
 
-    Tokens(String idToken, String accessToken, String refreshToken) {
+    public Tokens(String idToken, String accessToken, String refreshToken) {
         this.mIdToken = idToken;
         this.mAccessToken = accessToken;
         this.mRefreshToken = refreshToken;
