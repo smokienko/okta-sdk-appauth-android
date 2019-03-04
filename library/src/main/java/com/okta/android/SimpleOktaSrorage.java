@@ -4,7 +4,6 @@ import android.content.SharedPreferences;
 import android.util.Log;
 import com.okta.appauth.android.Tokens;
 import com.okta.openid.appauth.AuthorizationRequest;
-import com.okta.openid.appauth.AuthorizationResponse;
 import com.okta.openid.appauth.AuthorizationServiceConfiguration;
 import org.json.JSONException;
 
@@ -23,6 +22,9 @@ public class SimpleOktaSrorage implements OktaStorage {
     private AuthorizationServiceConfiguration authConfiguration;
     private AuthorizationRequest authRequest;
     private Tokens tokens;
+    private final Object tokensLock = new Object();
+    private final Object authRequestLock = new Object();
+    private final Object authConfigurationLock = new Object();
 
     public SimpleOktaSrorage(SharedPreferences prefs) {
         this.prefs = prefs;
@@ -30,59 +32,71 @@ public class SimpleOktaSrorage implements OktaStorage {
 
     @Override
     public void saveOktaConfiguration(AuthorizationServiceConfiguration configuration) {
-        prefs.edit().putString(AUTH_CONFIGURATION_KEY, configuration.toJsonString()).apply();
-        authConfiguration = configuration;
+        synchronized (authConfigurationLock) {
+            prefs.edit().putString(AUTH_CONFIGURATION_KEY, configuration.toJsonString()).apply();
+            authConfiguration = configuration;
+        }
     }
 
     @Override
     public AuthorizationServiceConfiguration getOktaConfiguration() {
-        if (authConfiguration == null && prefs.contains(AUTH_CONFIGURATION_KEY)) {
-            try {
-                authConfiguration = AuthorizationServiceConfiguration
-                        .fromJson(prefs.getString(AUTH_CONFIGURATION_KEY, ""));
-            } catch (JSONException e) {
-                Log.e(TAG, "saveAuthorizationResponse: ", e);
+        synchronized (authConfigurationLock) {
+            if (authConfiguration == null && prefs.contains(AUTH_CONFIGURATION_KEY)) {
+                try {
+                    authConfiguration = AuthorizationServiceConfiguration
+                            .fromJson(prefs.getString(AUTH_CONFIGURATION_KEY, ""));
+                } catch (JSONException e) {
+                    Log.e(TAG, "saveAuthorizationResponse: ", e);
+                }
             }
+            return authConfiguration;
         }
-        return authConfiguration;
     }
 
     @Override
     public void saveTokens(Tokens tokens) {
-        prefs.edit().putString(AUTH_ID_TOKEN_KEY, tokens.getIdToken()).apply();
-        prefs.edit().putString(AUTH_REFRESH_TOKEN_KEY, tokens.getRefreshToken()).apply();
-        prefs.edit().putString(AUTH_ACCESS_TOKEN_KEY, tokens.getAccessToken()).apply();
-        this.tokens = tokens;
+        synchronized (tokensLock) {
+            prefs.edit().putString(AUTH_ID_TOKEN_KEY, tokens.getIdToken()).apply();
+            prefs.edit().putString(AUTH_REFRESH_TOKEN_KEY, tokens.getRefreshToken()).apply();
+            prefs.edit().putString(AUTH_ACCESS_TOKEN_KEY, tokens.getAccessToken()).apply();
+            this.tokens = tokens;
+        }
     }
 
     @Override
     public Tokens getTokens() {
-        if (tokens == null && prefs.contains(AUTH_ID_TOKEN_KEY)) {
-            tokens = new Tokens(
-                    prefs.getString(AUTH_ID_TOKEN_KEY, null),
-                    prefs.getString(AUTH_ACCESS_TOKEN_KEY, null),
-                    prefs.getString(AUTH_ID_TOKEN_KEY, null)
-            );
+        synchronized (tokensLock) {
+            if (tokens == null && prefs.contains(AUTH_ID_TOKEN_KEY)) {
+                tokens = new Tokens(
+                        prefs.getString(AUTH_ID_TOKEN_KEY, null),
+                        prefs.getString(AUTH_ACCESS_TOKEN_KEY, null),
+                        prefs.getString(AUTH_ID_TOKEN_KEY, null)
+                );
+            }
+            return tokens;
         }
-        return tokens;
     }
 
     @Override
     public void saveAuthorizationRequest(AuthorizationRequest request) {
-        prefs.edit().putString(AUTH_REQUEST_KEY, request.jsonSerializeString()).apply();
-        authRequest = request;
+        synchronized (authRequestLock) {
+            prefs.edit().putString(AUTH_REQUEST_KEY, request.jsonSerializeString()).apply();
+            authRequest = request;
+        }
     }
 
     @Override
     public AuthorizationRequest getAuthorizationRequest() {
-        if (authRequest == null && prefs.contains(AUTH_REQUEST_KEY)) {
-            try {
-                authRequest = AuthorizationRequest
-                        .jsonDeserialize(prefs.getString(AUTH_REQUEST_KEY, ""));
-            } catch (JSONException e) {
-                Log.e(TAG, "saveAuthorizationResponse: ", e);
+        synchronized (authRequestLock) {
+            if (authRequest == null && prefs.contains(AUTH_REQUEST_KEY)) {
+                try {
+                    authRequest = AuthorizationRequest
+                            .jsonDeserialize(prefs.getString(AUTH_REQUEST_KEY, ""));
+                } catch (JSONException e) {
+                    Log.e(TAG, "saveAuthorizationResponse: ", e);
+                }
             }
+            return authRequest;
         }
-        return authRequest;
     }
 }

@@ -19,7 +19,7 @@ public class OktaSate {
         return tokens != null;
     }
 
-    public boolean hasPendingAthentication(){
+    public boolean hasPendingAuthentication(){
         return storage.getAuthorizationRequest() != null;
     }
 

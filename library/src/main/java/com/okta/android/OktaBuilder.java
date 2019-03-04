@@ -1,21 +1,14 @@
 package com.okta.android;
 
-import android.content.Context;
 import android.support.annotation.ColorRes;
 import android.support.annotation.NonNull;
 
 public class OktaBuilder {
-    private Context context;
     @ColorRes
     private int color;
     private OktaStorage storage;
     private OktaConfig config;
     private OktaFactory factory;
-
-    public OktaBuilder withContext(@NonNull Context context) {
-        this.context = context;
-        return this;
-    }
 
     public OktaBuilder withColor(@ColorRes int color) {
         this.color = color;
@@ -38,9 +31,6 @@ public class OktaBuilder {
     }
 
     public <T> T build() {
-        if (context == null) {
-            throw new IllegalStateException("Context can not be null!");
-        }
         if (storage == null) {
             throw new IllegalStateException("Storage can not be null!");
         }

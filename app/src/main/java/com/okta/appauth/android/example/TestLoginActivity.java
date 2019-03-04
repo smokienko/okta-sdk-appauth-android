@@ -28,7 +28,11 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import com.okta.android.*;
+import com.okta.android.async.AsyncOktaFactory;
+import com.okta.android.async.AuthListener;
+import com.okta.android.async.OktaAsync;
 import com.okta.android.results.AuthorizationResult;
+import com.okta.appauth.android.Tokens;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -47,8 +51,9 @@ public class TestLoginActivity extends AppCompatActivity {
     private Button mButton;
     private View mAuthorizedInfo;
     private TextView mIdToken;
-    private TextView mAccesToken;
+    private TextView mAccessToken;
     private Okta okta;
+    private OktaAsync oktaAsync;
     private ExecutorService loginExecutor = Executors.newSingleThreadExecutor();
     private Future loginTask;
 
@@ -60,18 +65,18 @@ public class TestLoginActivity extends AppCompatActivity {
         mLoginLayout = findViewById(R.id.loading_container);
         mButton = findViewById(R.id.start_button);
         mIdToken = findViewById(R.id.id_token_info);
-        mAccesToken = findViewById(R.id.access_token_info);
+        mAccessToken = findViewById(R.id.access_token_info);
         mAuthorizedInfo = findViewById(R.id.auth_container);
         mAuthProgress = findViewById(R.id.progress_bar);
 
-        mButton.setOnClickListener(v -> performBrowserLogin());
-        initOkta();
+        mButton.setOnClickListener(v -> performAsyncBrowserLogin());
+        initAsyncOkta();
 
         //In case our activity died during authentication
         //and have been recreated
-        if (okta.provideOktaState().hasPendingAthentication()) {
-            performBrowserLogin();
-        }
+//        if (okta.provideOktaState().hasPendingAuthentication()) {
+//            performAsyncBrowserLogin();
+//        }
     }
 
     @Override
@@ -93,11 +98,29 @@ public class TestLoginActivity extends AppCompatActivity {
         });
     }
 
+    private void performAsyncBrowserLogin() {
+        startLogin();
+        oktaAsync.authenticateWithBrowser(this, null, new AuthListener() {
+            @Override
+            public void onSuccess(Tokens tokens) {
+                stopLogin();
+                showAuthInfo();
+            }
+
+            @Override
+            public void onError(OktaException error) {
+                stopLogin();
+                showSnackbar("Login error " + error.getMessage());
+            }
+        });
+    }
+
     private void showAuthInfo() {
         mButton.post(() -> {
-            if (okta.provideOktaState().isAuthenticatedd()) {
-                mAccesToken.setText(okta.provideOktaState().getTokens().getAccessToken());
-                mIdToken.setText(okta.provideOktaState().getTokens().getIdToken());
+            OktaSate state = okta != null ? okta.provideOktaState() : oktaAsync.provideAuthState();
+            if (state.isAuthenticatedd()) {
+                mAccessToken.setText(state.getTokens().getAccessToken());
+                mIdToken.setText(state.getTokens().getIdToken());
                 mAuthorizedInfo.setVisibility(View.VISIBLE);
                 mLoginLayout.setVisibility(View.GONE);
             }
@@ -116,19 +139,32 @@ public class TestLoginActivity extends AppCompatActivity {
         okta = new OktaBuilder()
                 .withOktaFactory(new PlainOktaFactory())
                 .withConfig(config)
-                .withContext(this.getApplicationContext())
+                .withStorage(new SimpleOktaSrorage(getPreferences(MODE_PRIVATE)))
+                .build();
+    }
+
+    private void initAsyncOkta() {
+        OktaConfig config = new OktaConfig.Builder()
+                .withClientId("0oahnzhsegzYjqETc0h7")
+                .withRedirectUri("com.lohika.android.test:/callback")
+                .withEndSessionRedirectUri("com.lohika.android.test:/logout")
+                .withScopes("openid", "profile", "offline_access")
+                .withIssuerUri("https://lohika-um.oktapreview.com/oauth2/default")
+                .build();
+
+        oktaAsync = new OktaBuilder()
+                .withOktaFactory(new AsyncOktaFactory())
+                .withConfig(config)
                 .withStorage(new SimpleOktaSrorage(getPreferences(MODE_PRIVATE)))
                 .build();
     }
 
     @MainThread
     private void showSnackbar(String message) {
-        mButton.post(() -> {
-            Snackbar.make(findViewById(R.id.coordinator),
-                    message,
-                    Snackbar.LENGTH_SHORT)
-                    .show();
-        });
+        mButton.post(() -> Snackbar.make(findViewById(R.id.coordinator),
+                message,
+                Snackbar.LENGTH_SHORT)
+                .show());
     }
 
     private void startLogin() {
