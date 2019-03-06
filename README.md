@@ -7,14 +7,6 @@
 To run the example project, clone the repo, and run `./gradlew assemble` from the root directory.
 You can then install the example APK onto an Android device or emulator.
 
-## Installation
-
-Add the `OktaAppAuth` dependency to your `build.gradle` file:
-
-```bash
-implementation 'com.okta.android:appauth-android:0.2.3'
-```
-
 ## Overview
 
 This library currently supports:
@@ -45,24 +37,36 @@ You can create an Okta developer account at [https://developer.okta.com/](https:
 
 ### Configuration
 
-Create a file called `okta_app_auth_config.json` in your application's `res/raw/` directory with
-the following contents:
+Create  `OktaConfig` using `OktaConfig.OktaConfigBuilder`
+as follows:
 
-```json
-{
-  "client_id": "{clientIdValue}",
-  "redirect_uri": "{redirectUriValue}",
-  "end_session_redirect_uri": "{endSessionUriValue}",
-  "scopes": [
-    "openid",
-    "profile",
-    "offline_access"
-  ],
-  "issuer_uri": "https://{yourOktaDomain}.com/oauth2/default"
-}
+```java
+    OktaConfig config = new OktaConfig.Builder()
+                .withClientId("clientIdValue")
+                .withRedirectUri("redirectUriValue")
+                .withEndSessionRedirectUri("endSessionUriValue")
+                .withScopes("openid", "profile", "offline_access")
+                .withIssuerUri("https://{yourOktaDomain}.com/oauth2/default")
+                .build();
 ```
 
 **Note**: *To receive a **refresh_token**, you must include the `offline_access` scope.*
+
+### Building Okta
+
+In order to construct Okta Api you need to use `OktaBuilder`
+
+```java
+        OktaBuilder()
+                .withConfig(config)
+                .withStorage(new SimpleOktaSrorage(getPreferences(MODE_PRIVATE)))
+                .withOktaFactory(new PlainOktaFactory())
+                .build();
+``` 
+
+Depending on what `OktaFactory` implementation you provide you will receive different implementation:
+`PlainOktaFactory` will return `Okta` that is a synchronous API.
+`AsyncOktaFactory` will return `OktaAsync` that is an asynchronous API.   
 
 ### Update the URI Scheme
 
@@ -95,177 +99,216 @@ The flow should look similar to:
 
 More information on this topic is recorded in [this issue](https://github.com/okta/okta-sdk-appauth-android/issues/8).
 
-## Authorization
+### Browser Authorization 
+ 
+#### Synchronous Browser Authorization
 
-First, initialize the Okta AppAuth SDK in the `Activity#onCreate` method of the Activity that you
-are using to log users into your app. In this example, we will call it `LoginActivity`:
+You need to initialize your `OktaConfig` and use `PlainOktaFactory` to instantiate `Okta` object 
 
-```java
-// LoginActivity.java
-
-public class LoginActivity extends Activity {
-
-    private OktaAppAuth mOktaAuth;
-
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-        mOktaAuth = OktaAppAuth.getInstance(this);
-
-        // Do any of your own setup of the Activity
-        mOktaAuth.init(
-                this,
-                new OktaAppAuth.OktaAuthListener() {
-                    @Override
-                    public void onSuccess() {
-                        // Handle a successful initialization (e.g. display login button)
-                    }
-
-                    @Override
-                    public void onTokenFailure(@NonNull AuthorizationException ex) {
-                        // Handle a failed initialization
-                    }
-                });
-    }
-}
-```
-
-Once the OktaAppAuth instance is initialized, you can start the authorization flow by simply calling
-`login` whenever you're ready:
+Once the Okta instance is initialized, you can start the authorization flow by simply calling
+`authenticateWithBrowser` whenever you're ready, but do not call it on Ui Thread:
 
 ```java
 // LoginActivity.java
 
 public class LoginActivity extends Activity {
 
-    private void startAuth() {
-        Intent completionIntent = new Intent(this, AuthorizedActivity.class);
-        Intent cancelIntent = new Intent(this, LoginActivity.class);
-        cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    ExecutorService loginExecutor;
 
-        mOktaAuth.login(
-                this,
-                PendingIntent.getActivity(this, 0, completionIntent, 0),
-                PendingIntent.getActivity(this, 0, cancelIntent, 0)
-        );
+    private void performBrowserLogin() {
+            loginExecutor.submit(() -> {
+                AuthorizationResult result = okta.authenticateWithBrowser(this, null);
+                if (result.isSuccess()) {
+                    //work on success results
+                } else {
+                    //handle error
+                }
+            }); 
+    }
+}
+
+```
+
+Also you can provide additional parameters like `customState` or `loginHint` or add `additional parameters` by
+providing `AuthenticationPayload`, that is an optional parameter.
+
+#### Asynchronous Browser Authorization
+
+You need to initialize your `OktaConfig` and use `AsyncOktaFactory` to instantiate `OktaAsync` object
+
+Once the Okta instance is initialized, you can start the authorization flow by simply calling
+`authenticateWithBrowser` whenever you're ready:
+
+```java
+public class LoginActivity extends Activity {
+    
+    private void performAsyncBrowserLogin() {
+        
+        oktaAsync.authenticateWithBrowser(this, null, new AuthListener() {
+            @Override
+            public void onSuccess(Tokens tokens) {
+                //Success handling code goes here
+            }
+
+            @Override
+            public void onError(OktaException error) {
+               //Error handling code goes here
+            }
+        });
     }
 }
 ```
 
-To login using a username hint, simply hookup a `LoginHintChangeHandler` to your `EditText` that has
-the username input. Usually this happens in your `onCreate`:
+Also you can provide additional parameters like `customState` or `loginHint` or add `additional parameters` by
+providing `AuthenticationPayload`, that is an optional parameter.
 
-```java
-((EditText)findViewById(R.id.login_hint_value)).addTextChangedListener(
-                new LoginHintChangeHandler(mOktaAuth));
-```
+### Native Authentication
 
-### Get UserInfo
+NOTE: In order to use Native Authentication you need to get `sessionToken`. 
+For this purpose you can use:
+[Okta Java Authentication SDK](https://github.com/okta/okta-auth-java)
 
-Once a user logs in, you can use the OktaAppAuth object to call the OIDC userInfo endpoint to return
-user information.
-```java
-private void fetchUserInfo() {
-    mOktaAuth.getUserInfo(new OktaAppAuth.OktaAuthActionCallback<JSONObject>() {
-        @Override
-        public void onSuccess(JSONObject response) {
-            // Do whatever you need to do with the user info data
-        }
+#### Synchronous Native Authentication
 
-        @Override
-        public void onTokenFailure(@NonNull AuthorizationException ex) {
-            // Handle an error with the Okta authorization and tokens
-        }
+You need to initialize your `OktaConfig` and use `PlainOktaFactory` to instantiate `Okta` object 
 
-        @Override
-        public void onFailure(int httpResponseCode, Exception ex) {
-            // Handle a network error when fetching the user info data
-        }
-    });
-}
-```
-
-### Performing Authorized Requests
-
-In addition to the built in userInfo endpoint, you can use the OktaAppAuth interface to perform
-your own authorized requests, whatever they might be. You can use this simple method to make
-your own requests and have the access token automatically added to the `Authorization` header with
-the standard OAuth 2.0 prefix of `Bearer`. The `performAuthorizedRequest` method will also handle
-getting new tokens for you if required:
-
-```java
-final URL myUrl; // some protected URL
-
-mOktaAuth.performAuthorizedRequest(new OktaAppAuth.BearerAuthRequest() {
-    @NonNull
-    @Override
-    public HttpURLConnection createRequest() throws Exception {
-        HttpURLConnection conn = (HttpURLConnection) myUrl.openConnection();
-        conn.setInstanceFollowRedirects(false); // recommended during authorized calls
-        return conn;
-    }
-
-    @Override
-    public void onSuccess(@NonNull InputStream response) {
-        // Handle successful response in the input stream
-    }
-
-    @Override
-    public void onTokenFailure(@NonNull AuthorizationException ex) {
-        // Handle failure to acquire new tokens from Okta
-    }
-
-    @Override
-    public void onFailure(int httpResponseCode, Exception ex) {
-        // Handle failure to make your authorized request or a response with a 4xx or
-        // 5xx HTTP status response code
-    }
-);
-```
-
-### Refresh a Token Manually
-
-You can also refresh the `accessToken` if the `refreshToken` is provided.
-
-```java
-mOktaAuth.refreshAccessToken(new OktaAuth.OktaAuthListener() {
-    @Override
-    public void onSuccess() {
-        // Handle a successful refresh
-    }
-
-    @Override
-    public void onTokenFailure(@NonNull AuthorizationException ex) {
-        // Handle a failure to refresh the tokens
-    }
-```
-
-### Token Management
-
-Tokens are securely stored in the private Shared Preferences.
-
-### End session
-
-In order to perform end session within user's current browser and perform logout
-you have to call `signOutFromOkta()` whenever you are ready
+Once the Okta instance is initialized, you can start the authorization flow by simply calling
+`authenticate` with valid `sessionToken` whenever you're ready, but do not call it on Ui Thread:
 
 ```java
 // LoginActivity.java
 
-public class UserInfoActivity extends Activity {
+public class LoginActivity extends Activity {
 
-    private void signOutFromOkta() {
-        Intent completionIntent = new Intent(this, LoginActivity.class);
-        Intent cancelIntent = new Intent(this, UserInfoActivity.class);
-        cancelIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    ExecutorService loginExecutor;
 
-        mOktaAuth.signOutFromOkta(
-                this,
-                PendingIntent.getActivity(this, 0, completionIntent, 0),
-                PendingIntent.getActivity(this, 0, cancelIntent, 0)
-        );
+    private void performBrowserLogin(String sessionToken) {
+            loginExecutor.submit(() -> {
+                AuthorizationResult result = okta.authenticateWithBrowser(sessionToken, null);
+                if (result.isSuccess()) {
+                    //Success handling code goes here
+                } else {
+                    //Error handling code goes here
+                }
+            }); 
     }
 }
+
+```
+
+Also you can provide additional parameters like `customState` or `loginHint` or add `additional parameters` by
+providing `AuthenticationPayload`, that is an optional parameter.
+
+#### Asynchronous Native Authentication
+
+You need to initialize your `OktaConfig` and use `AsyncOktaFactory` to instantiate `OktaAsync` object 
+
+Once the Okta instance is initialized, you can start the authorization flow by simply calling
+`authenticate` with valid `sessionToken` whenever you're ready:
+
+```java
+public class LoginActivity extends Activity {
+    
+    private void performAsyncBrowserLogin() {
+        
+        oktaAsync.authenticate(this, new AuthListener() {
+            @Override
+            public void onSuccess(Tokens tokens) {
+                //Success handling code goes here
+            }
+
+            @Override
+            public void onError(OktaException error) {
+               //Error handling code goes here
+            }
+        });
+    }
+}
+```
+
+Also you can provide additional parameters like `customState` or `loginHint` or add `additional parameters` by
+providing `AuthenticationPayload`, that is an optional parameter.
+
+### End browser session (Sing out from Okta)
+
+#### Synchronous end browser session
+
+You need to initialize your `OktaConfig` and use `PlainOktaFactory` to instantiate `Okta` object.
+You need end browser session only if you have performed browser authorization
+
+Once the Okta instance is initialized, you can end session in browser by calling `singOutFromOkta`
+whenever you are ready,  but do not call it on Ui Thread:
+
+
+```java
+// LoginActivity.java
+
+public class CustomActivity extends Activity {
+
+    ExecutorService loginExecutor;
+
+    private void singOutFromOkta() {
+            loginExecutor.submit(() -> {
+                Result result = okta.singOutFromOkta(this);
+                if (result.isSuccess()) {
+                    //Success handling code goes here
+                } else {
+                    //Error handling code goes here
+                }
+            }); 
+    }
+}
+
+```
+
+#### Asynchronous end browser session
+
+You need to initialize your `OktaConfig` and use `PlainOktaFactory` to instantiate `Okta` object.
+You need end browser session only if you have performed browser authorization
+
+Once the Okta instance is initialized, you can end session in browser by calling `singOutFromOkta`
+whenever you are ready:
+
+
+```java
+
+public class CustomActivity extends Activity {
+
+    private void singOutFromOkta() {
+            
+            oktaAsync.authenticate(this, new EndSessionListener() {
+                @Override
+                public void onSuccess() {
+                    //Success handling code goes here
+                }
+    
+                @Override
+                public void onError(OktaException error) {
+                   //Error handling code goes here
+                }
+            });
+        }
+}
+
+```
+
+### Clear Okta State
+
+In order to clear all user data saved by Okta you should:
+- Get `OktaState` from initialized `Okta` or `OktaAsync`
+- call `clear()`
+
+```java
+
+public class CustomActivity extends Activity {
+
+    private void clearOktaState() {
+            
+            okta.getState().clear();
+            
+        }
+}
+
 ```
 
 ## License

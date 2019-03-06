@@ -4,7 +4,6 @@ import com.okta.android.OktaException;
 
 public class Result {
 
-
     private final OktaException error;
 
     Result(OktaException error) {

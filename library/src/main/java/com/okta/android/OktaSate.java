@@ -37,4 +37,10 @@ public class OktaSate {
         return storage.getTokens();
     }
 
+    public void clear() {
+        storage.saveAuthorizationRequest(null);
+        storage.saveTokens(null);
+        storage.saveOktaConfiguration(null);
+    }
+
 }
