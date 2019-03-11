@@ -1,6 +1,7 @@
 package com.okta.android;
 
 import android.content.SharedPreferences;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import com.okta.appauth.android.Tokens;
 import com.okta.openid.appauth.AuthorizationRequest;
@@ -11,92 +12,26 @@ import static android.content.ContentValues.TAG;
 
 public class SimpleOktaSrorage implements OktaStorage {
 
-    private static final String AUTH_CONFIGURATION_KEY = "authConfigurationKey";
-    private static final String AUTH_REQUEST_KEY = "authRequestKey";
-    private static final String AUTH_ID_TOKEN_KEY = "authIdTokeKey";
-    private static final String AUTH_REFRESH_TOKEN_KEY = "authRefreshTokenKey";
-    private static final String AUTH_ACCESS_TOKEN_KEY = "authAccessTokenKey";
-
     private SharedPreferences prefs;
-
-    private AuthorizationServiceConfiguration authConfiguration;
-    private AuthorizationRequest authRequest;
-    private Tokens tokens;
-    private final Object tokensLock = new Object();
-    private final Object authRequestLock = new Object();
-    private final Object authConfigurationLock = new Object();
 
     public SimpleOktaSrorage(SharedPreferences prefs) {
         this.prefs = prefs;
     }
 
+
     @Override
-    public void saveOktaConfiguration(AuthorizationServiceConfiguration configuration) {
-        synchronized (authConfigurationLock) {
-            prefs.edit().putString(AUTH_CONFIGURATION_KEY, configuration.toJsonString()).apply();
-            authConfiguration = configuration;
-        }
+    public void save(String key, String value) {
+        prefs.edit().putString(key, value).apply();
     }
 
     @Override
-    public AuthorizationServiceConfiguration getOktaConfiguration() {
-        synchronized (authConfigurationLock) {
-            if (authConfiguration == null && prefs.contains(AUTH_CONFIGURATION_KEY)) {
-                try {
-                    authConfiguration = AuthorizationServiceConfiguration
-                            .fromJson(prefs.getString(AUTH_CONFIGURATION_KEY, ""));
-                } catch (JSONException e) {
-                    Log.e(TAG, "saveAuthorizationResponse: ", e);
-                }
-            }
-            return authConfiguration;
-        }
+    @Nullable
+    public String get(String key) {
+        return prefs.getString(key, null);
     }
 
     @Override
-    public void saveTokens(Tokens tokens) {
-        synchronized (tokensLock) {
-            prefs.edit().putString(AUTH_ID_TOKEN_KEY, tokens.getIdToken()).apply();
-            prefs.edit().putString(AUTH_REFRESH_TOKEN_KEY, tokens.getRefreshToken()).apply();
-            prefs.edit().putString(AUTH_ACCESS_TOKEN_KEY, tokens.getAccessToken()).apply();
-            this.tokens = tokens;
-        }
-    }
-
-    @Override
-    public Tokens getTokens() {
-        synchronized (tokensLock) {
-            if (tokens == null && prefs.contains(AUTH_ID_TOKEN_KEY)) {
-                tokens = new Tokens(
-                        prefs.getString(AUTH_ID_TOKEN_KEY, null),
-                        prefs.getString(AUTH_ACCESS_TOKEN_KEY, null),
-                        prefs.getString(AUTH_ID_TOKEN_KEY, null)
-                );
-            }
-            return tokens;
-        }
-    }
-
-    @Override
-    public void saveAuthorizationRequest(AuthorizationRequest request) {
-        synchronized (authRequestLock) {
-            prefs.edit().putString(AUTH_REQUEST_KEY, request.jsonSerializeString()).apply();
-            authRequest = request;
-        }
-    }
-
-    @Override
-    public AuthorizationRequest getAuthorizationRequest() {
-        synchronized (authRequestLock) {
-            if (authRequest == null && prefs.contains(AUTH_REQUEST_KEY)) {
-                try {
-                    authRequest = AuthorizationRequest
-                            .jsonDeserialize(prefs.getString(AUTH_REQUEST_KEY, ""));
-                } catch (JSONException e) {
-                    Log.e(TAG, "saveAuthorizationResponse: ", e);
-                }
-            }
-            return authRequest;
-        }
+    public void delete(String key) {
+        prefs.edit().putString(key, null).apply();
     }
 }

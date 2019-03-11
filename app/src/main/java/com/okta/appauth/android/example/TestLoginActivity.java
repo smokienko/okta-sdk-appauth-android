@@ -72,9 +72,9 @@ public class TestLoginActivity extends AppCompatActivity {
         mButton.setOnClickListener(v -> performAsyncBrowserLogin());
         initAsyncOkta();
 
-        //In case our activity died during authentication
-        //and have been recreated
-//        if (okta.provideOktaState().hasPendingAuthentication()) {
+//        In case our activity died during authentication
+//        and have been recreated
+//        if (oktaAsync.provideAuthState().hasPendingAuthentication()) {
 //            performAsyncBrowserLogin();
 //        }
     }

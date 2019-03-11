@@ -1,21 +1,13 @@
 package com.okta.android;
 
-import com.okta.appauth.android.Tokens;
-import com.okta.openid.appauth.AuthorizationRequest;
-import com.okta.openid.appauth.AuthorizationServiceConfiguration;
 
 public interface OktaStorage {
 
-    void saveOktaConfiguration(AuthorizationServiceConfiguration configuration);
+    void save(String key, String value);
 
-    AuthorizationServiceConfiguration getOktaConfiguration();
+    String get(String key);
 
-    void saveTokens(Tokens tokens);
+    void delete(String key);
 
-    Tokens getTokens();
-
-    void saveAuthorizationRequest(AuthorizationRequest request);
-
-    AuthorizationRequest getAuthorizationRequest();
 
 }

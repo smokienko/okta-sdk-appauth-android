@@ -26,17 +26,17 @@ public class Okta {
 
     private static final String TAG = Okta.class.getSimpleName();
     private final OktaConfig config;
-    private final OktaStorage storage;
     private final OktaSate state;
+    private final OktaRepository repository;
     @ColorRes
     private final int color;
 
 
     Okta(OktaConfig config, OktaStorage storage, int color) {
         this.config = config;
-        this.storage = storage;
+        this.repository = new OktaRepository(storage);
         this.color = color;
-        this.state = new OktaSate(storage);
+        this.state = new OktaSate(repository);
     }
 
     public AuthorizationResult authenticateWithBrowser(Context context, AuthenticationPayload payload) {
@@ -61,7 +61,7 @@ public class Okta {
                 return AuthorizationResult.error(new OktaException(e.errorDescription, e));
             }
             AuthorizationRequest request = createAuthRequest(payload);
-            storage.saveAuthorizationRequest(request);
+            repository.saveAuthorizationRequest(request);
             Intent intent = OktaAuthenticateActivity.createAuthIntent(context, request, color);
             context.startActivity(intent);
             try {
@@ -85,11 +85,11 @@ public class Okta {
                 TokeExchangeRequest tokeExchangeRequest = new TokeExchangeRequest(
                         (AuthorizationResponse) response,
                         config.getClientId(),
-                        storage.getOktaConfiguration());
+                        repository.getOktaConfiguration());
 
                 try {
                     Tokens tokens = tokeExchangeRequest.execute();
-                    storage.saveTokens(tokens);
+                    repository.saveTokens(tokens);
                     return AuthorizationResult.success(tokens);
                 } catch (AuthorizationException e) {
                     return AuthorizationResult.error(new OktaException(e.error, e));
@@ -112,7 +112,7 @@ public class Okta {
     private void obtainConfiguration() throws AuthorizationException {
         if (!state.isConfigured()) {
             AuthorizationServiceConfiguration configuration = new ConfigurationRequest(config).execute();
-            storage.saveOktaConfiguration(configuration);
+            repository.saveOktaConfiguration(configuration);
         }
     }
 
@@ -146,7 +146,7 @@ public class Okta {
 
     private AuthorizationRequest createAuthRequest(AuthenticationPayload payload) {
         AuthorizationRequest.Builder authRequestBuilder = new AuthorizationRequest.Builder(
-                storage.getOktaConfiguration(),
+                repository.getOktaConfiguration(),
                 config.getClientId(),
                 ResponseTypeValues.CODE,
                 config.getRedirecUri())
@@ -169,7 +169,7 @@ public class Okta {
             return AuthorizationException.fromOAuthRedirect(responseUri).toIntent();
         } else {
             //TODO mAuthRequest is null if Activity is destroyed.
-            AuthorizationRequest authRequest = storage.getAuthorizationRequest();
+            AuthorizationRequest authRequest = repository.getAuthorizationRequest();
             if (authRequest == null) {
 
             }
