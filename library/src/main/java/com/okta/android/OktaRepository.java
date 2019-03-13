@@ -1,10 +1,15 @@
 package com.okta.android;
 
+import android.content.Context;
 import android.util.Log;
 import com.okta.appauth.android.Tokens;
 import com.okta.openid.appauth.AuthorizationRequest;
 import com.okta.openid.appauth.AuthorizationServiceConfiguration;
 import org.json.JSONException;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.*;
 
 import static android.content.ContentValues.TAG;
 
@@ -16,6 +21,7 @@ public class OktaRepository {
     private static final String AUTH_ACCESS_TOKEN_KEY = "authAccessTokenKey";
 
     private final OktaStorage storage;
+    private final EncryptionManager encryptionManager;
 
     private AuthorizationServiceConfiguration authConfiguration;
     private AuthorizationRequest authRequest;
@@ -24,24 +30,29 @@ public class OktaRepository {
     private final Object authRequestLock = new Object();
     private final Object authConfigurationLock = new Object();
 
-    public OktaRepository(OktaStorage storage) {
+    public OktaRepository(OktaStorage storage, Context context) {
         this.storage = storage;
+        this.encryptionManager = buildEncriptionManager(context);
     }
 
 
     public void saveOktaConfiguration(AuthorizationServiceConfiguration configuration) {
         synchronized (authConfigurationLock) {
-            storage.save(AUTH_CONFIGURATION_KEY, configuration.toJsonString());
+            storage.save(getHashed(AUTH_CONFIGURATION_KEY),
+                    getEncrypted(configuration.toJsonString()));
             authConfiguration = configuration;
         }
     }
 
     public AuthorizationServiceConfiguration getOktaConfiguration() {
         synchronized (authConfigurationLock) {
-            if (authConfiguration == null && storage.get(AUTH_CONFIGURATION_KEY) != null) {
+            if (authConfiguration == null
+                    && storage.get(getHashed(AUTH_CONFIGURATION_KEY)) != null) {
                 try {
                     authConfiguration = AuthorizationServiceConfiguration
-                            .fromJson(storage.get(AUTH_CONFIGURATION_KEY));
+                            .fromJson(
+                                    getDencrypted(
+                                            storage.get(getHashed(AUTH_CONFIGURATION_KEY))));
                 } catch (JSONException e) {
                     Log.e(TAG, "saveAuthorizationResponse: ", e);
                 }
@@ -52,20 +63,20 @@ public class OktaRepository {
 
     public void saveTokens(Tokens tokens) {
         synchronized (tokensLock) {
-            storage.save(AUTH_ID_TOKEN_KEY, tokens.getIdToken());
-            storage.save(AUTH_REFRESH_TOKEN_KEY, tokens.getRefreshToken());
-            storage.save(AUTH_ACCESS_TOKEN_KEY, tokens.getAccessToken());
+            storage.save(getHashed(AUTH_ID_TOKEN_KEY), getEncrypted(tokens.getIdToken()));
+            storage.save(getHashed(AUTH_REFRESH_TOKEN_KEY), getEncrypted(tokens.getRefreshToken()));
+            storage.save(getHashed(AUTH_ACCESS_TOKEN_KEY), getEncrypted(tokens.getAccessToken()));
             this.tokens = tokens;
         }
     }
 
     public Tokens getTokens() {
         synchronized (tokensLock) {
-            if (tokens == null && storage.get(AUTH_ID_TOKEN_KEY) != null) {
+            if (tokens == null && storage.get(getHashed(AUTH_ID_TOKEN_KEY)) != null) {
                 tokens = new Tokens(
-                        storage.get(AUTH_ID_TOKEN_KEY),
-                        storage.get(AUTH_ACCESS_TOKEN_KEY),
-                        storage.get(AUTH_ID_TOKEN_KEY)
+                        getDencrypted(storage.get(getHashed(AUTH_ID_TOKEN_KEY))),
+                        getDencrypted(storage.get(getHashed(AUTH_ACCESS_TOKEN_KEY))),
+                        getDencrypted(storage.get(getHashed(AUTH_ID_TOKEN_KEY)))
                 );
             }
             return tokens;
@@ -74,17 +85,18 @@ public class OktaRepository {
 
     public void saveAuthorizationRequest(AuthorizationRequest request) {
         synchronized (authRequestLock) {
-            storage.save(AUTH_REQUEST_KEY, request.jsonSerializeString());
+            storage.save(getHashed(AUTH_REQUEST_KEY), getEncrypted(request.jsonSerializeString()));
             authRequest = request;
         }
     }
 
     public AuthorizationRequest getAuthorizationRequest() {
         synchronized (authRequestLock) {
-            if (authRequest == null && storage.get(AUTH_REQUEST_KEY) != null) {
+            if (authRequest == null && storage.get(getHashed(AUTH_REQUEST_KEY)) != null) {
                 try {
                     authRequest = AuthorizationRequest
-                            .jsonDeserialize(storage.get(AUTH_REQUEST_KEY));
+                            .jsonDeserialize(
+                                    getDencrypted(storage.get(getHashed(AUTH_REQUEST_KEY))));
                 } catch (JSONException e) {
                     Log.e(TAG, "saveAuthorizationResponse: ", e);
                 }
@@ -92,4 +104,56 @@ public class OktaRepository {
             return authRequest;
         }
     }
+
+    private String getEncrypted(String value) {
+        if (encryptionManager == null) return value;
+        try {
+            return encryptionManager.encrypt(value);
+        } catch (GeneralSecurityException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return value;
+        } catch (IOException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return value;
+        }
+    }
+
+    private String getDencrypted(String value) {
+        if (encryptionManager == null) return value;
+        try {
+            return encryptionManager.decrypt(value);
+        } catch (GeneralSecurityException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return value;
+        } catch (IOException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return value;
+        }
+    }
+
+    private String getHashed(String value) {
+        try {
+            return EncryptionManager.getHashed(value);
+        } catch (NoSuchAlgorithmException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return value;
+        } catch (UnsupportedEncodingException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return value;
+        }
+    }
+
+    private EncryptionManager buildEncriptionManager(Context context){
+        try {
+            return new EncryptionManager(context,
+                    context.getSharedPreferences("Encpription", Context.MODE_PRIVATE));
+        } catch (IOException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return null;
+        } catch (GeneralSecurityException ex) {
+            Log.d(TAG, "getEncrypted: " + ex.getCause());
+            return null;
+        }
+    }
+
 }

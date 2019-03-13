@@ -2,13 +2,6 @@ package com.okta.android;
 
 import android.content.SharedPreferences;
 import android.support.annotation.Nullable;
-import android.util.Log;
-import com.okta.appauth.android.Tokens;
-import com.okta.openid.appauth.AuthorizationRequest;
-import com.okta.openid.appauth.AuthorizationServiceConfiguration;
-import org.json.JSONException;
-
-import static android.content.ContentValues.TAG;
 
 public class SimpleOktaSrorage implements OktaStorage {
 
@@ -17,7 +10,6 @@ public class SimpleOktaSrorage implements OktaStorage {
     public SimpleOktaSrorage(SharedPreferences prefs) {
         this.prefs = prefs;
     }
-
 
     @Override
     public void save(String key, String value) {

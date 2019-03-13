@@ -21,7 +21,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.ColorInt;
 import android.support.customtabs.CustomTabsIntent;
-import android.util.Log;
 import com.okta.openid.appauth.AuthorizationRequest;
 import com.okta.openid.appauth.browser.*;
 

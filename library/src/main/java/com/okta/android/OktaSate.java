@@ -20,7 +20,7 @@ public class OktaSate {
     }
 
     public boolean hasPendingAuthentication(){
-        return repository.getAuthorizationRequest() != null;
+        return LocalIntentBus.getInstance().containsPending(LocalIntentBus.BROWSER_AUTH_CHANNEL);
     }
 
     public boolean hasRefreshToken() {

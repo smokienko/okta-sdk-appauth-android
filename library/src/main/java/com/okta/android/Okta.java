@@ -32,9 +32,9 @@ public class Okta {
     private final int color;
 
 
-    Okta(OktaConfig config, OktaStorage storage, int color) {
+    Okta(OktaConfig config, OktaStorage storage, Context context, int color) {
         this.config = config;
-        this.repository = new OktaRepository(storage);
+        this.repository = new OktaRepository(storage, context);
         this.color = color;
         this.state = new OktaSate(repository);
     }

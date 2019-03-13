@@ -74,9 +74,9 @@ public class TestLoginActivity extends AppCompatActivity {
 
 //        In case our activity died during authentication
 //        and have been recreated
-//        if (oktaAsync.provideAuthState().hasPendingAuthentication()) {
-//            performAsyncBrowserLogin();
-//        }
+        if (oktaAsync.provideAuthState().hasPendingAuthentication()) {
+            performAsyncBrowserLogin();
+        }
     }
 
     @Override
@@ -155,6 +155,7 @@ public class TestLoginActivity extends AppCompatActivity {
         oktaAsync = new OktaBuilder()
                 .withOktaFactory(new AsyncOktaFactory())
                 .withConfig(config)
+                .withContext(getApplicationContext())
                 .withStorage(new SimpleOktaSrorage(getPreferences(MODE_PRIVATE)))
                 .build();
     }
@@ -193,6 +194,9 @@ public class TestLoginActivity extends AppCompatActivity {
         Log.d(TAG, "onDestroy: ");
         if (loginTask != null && loginTask.isDone()) {
             loginTask.cancel(true);
+        }
+        if (oktaAsync != null) {
+            oktaAsync.dispose();
         }
     }
 

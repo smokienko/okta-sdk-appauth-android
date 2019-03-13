@@ -11,12 +11,13 @@ import com.okta.appauth.android.AuthenticationPayload;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class OktaAsync {
 
     private final Okta okta;
     private final ExecutorService service = Executors.newSingleThreadExecutor();
-    private WeakReference<AuthListener> authListenerWrapper;
+    private final AtomicReference<AuthListener> authListenerWrapper = new AtomicReference<>();
 
 
     OktaAsync(Okta okta) {
@@ -26,7 +27,7 @@ public class OktaAsync {
     public void authenticateWithBrowser(@NonNull Context context,
                                         @Nullable AuthenticationPayload payload,
                                         @NonNull AuthListener listener) {
-        authListenerWrapper = new WeakReference<>(listener);
+        authListenerWrapper.set(listener);
 
         service.submit(() -> {
 
@@ -48,5 +49,10 @@ public class OktaAsync {
     public OktaSate provideAuthState() {
         return okta.provideOktaState();
     }
+
+    public void dispose(){
+        authListenerWrapper.set(null);
+    }
+
 
 }
